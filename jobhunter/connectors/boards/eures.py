@@ -2,12 +2,15 @@
 EURES connector.
 
 EURES (European Employment Services) is the EU employment portal.
-It provides a public JSON API that does not require authentication
-for job searches — fully compliant, no scraping needed.
 
-API reference: https://eures.europa.eu/api-documentation
+API updated August 2026: endpoint moved from
+  eures.europa.eu/api/jv-search  (old, now 404)
+to
+  europa.eu/eures/api/jv-searchengine/public/jv-search/search  (current)
+
+The new API uses a POST body with a structured JSON schema.
+Reference: https://github.com/rorar/EURES-API-Documentation
 """
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -19,135 +22,89 @@ from jobhunter.connectors.base import BaseConnector, RawJob
 
 logger = structlog.get_logger(__name__)
 
-# EURES public search API
-API_BASE = "https://eures.europa.eu/api"
-SEARCH_ENDPOINT = f"{API_BASE}/jv-search"
+# Updated endpoint (as of 2026)
+SEARCH_ENDPOINT = (
+    "https://europa.eu/eures/api/jv-searchengine/public/jv-search/search"
+)
 
-# ISCO occupation codes relevant to mechatronics/engineering interns
-ENGINEERING_ISCO_CODES = [
-    "2144",  # Mechanical engineers
-    "2151",  # Electrical engineers
-    "2152",  # Electronics engineers
-    "2166",  # Graphic and multimedia designers (for computer vision)
-    "2153",  # Telecommunications engineers
-    "2143",  # Environmental engineers
-    "7412",  # Electrical mechanics and fitters
-]
-
-# Hungarian NUTS code
-HUNGARY_NUTS = "HU"
-BUDAPEST_NUTS = "HU110"
-DEBRECEN_NUTS = "HU321"
+HUNGARY_NUTS = "hu"   # lowercase country code in new API
 
 
 class EURESConnector(BaseConnector):
     """Fetches engineering internship listings from the EURES EU jobs portal."""
 
     name = "eures"
-    description = "EURES — European Employment Services public API"
+    description = "EURES — European Employment Services public API (2026 endpoint)"
     requires_browser = False
 
     async def _fetch_jobs(self) -> list[RawJob]:
-        """Query EURES API for engineering roles in Hungary."""
         jobs: list[RawJob] = []
         seen_ids: set[str] = set()
 
-        search_queries = [
-            {"keywords": "mechatronics intern", "country": HUNGARY_NUTS},
-            {"keywords": "robotics intern", "country": HUNGARY_NUTS},
-            {"keywords": "automation intern", "country": HUNGARY_NUTS},
-            {"keywords": "embedded systems intern", "country": HUNGARY_NUTS},
-            {"keywords": "engineering student", "country": HUNGARY_NUTS},
-            {"keywords": "electrical engineering intern", "country": HUNGARY_NUTS},
-            {"keywords": "manufacturing intern Hungary", "country": HUNGARY_NUTS},
+        keywords = [
+            "mechatronics intern",
+            "robotics intern",
+            "automation intern",
+            "embedded systems intern",
+            "electrical engineering intern",
+            "engineering student",
+            "manufacturing intern",
         ]
 
-        for query in search_queries:
+        for kw in keywords:
             try:
-                batch = await self._query_api(
-                    keywords=query["keywords"],
-                    country=query["country"],
-                    seen_ids=seen_ids,
-                )
+                batch = await self._query(kw, seen_ids)
                 jobs.extend(batch)
-                logger.info(
-                    "eures.query_done",
-                    keywords=query["keywords"],
-                    found=len(batch),
-                )
+                logger.info("eures.query_done", keywords=kw, found=len(batch))
             except Exception as exc:
-                logger.warning(
-                    "eures.query_error",
-                    keywords=query["keywords"],
-                    error=str(exc),
-                )
+                logger.warning("eures.query_error", keywords=kw, error=str(exc))
 
         return jobs
 
-    async def _query_api(
-        self,
-        keywords: str,
-        country: str,
-        seen_ids: set[str],
-        page_size: int = 50,
-    ) -> list[RawJob]:
-        """
-        Call the EURES search API.
-
-        The EURES API uses a POST request with a JSON body.
-        Documented at: https://eures.europa.eu/api-documentation
-        """
+    async def _query(self, keyword: str, seen_ids: set[str]) -> list[RawJob]:
+        """POST to the EURES search API with the 2026 request schema."""
         payload = {
-            "keywords": keywords,
-            "countries": [country],
-            "pageNumber": 0,
-            "pageSize": page_size,
-            "sortBy": "BEST_MATCH",
-            "positionSchedule": [],  # no filter — includes part-time
-        }
-
-        try:
-            response = await self._post(
-                SEARCH_ENDPOINT,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            data = response.json()
-        except Exception as exc:
-            # Try alternate endpoint format
-            logger.debug("eures.api_fallback", error=str(exc))
-            return await self._query_api_v2(keywords, country, seen_ids, page_size)
-
-        return self._parse_api_response(data, seen_ids)
-
-    async def _query_api_v2(
-        self,
-        keywords: str,
-        country: str,
-        seen_ids: set[str],
-        page_size: int = 50,
-    ) -> list[RawJob]:
-        """Fallback: GET-based EURES API variant."""
-        params = {
-            "keywords": keywords,
-            "countries": country,
-            "resultsPerPage": page_size,
+            "resultsPerPage": 50,
             "page": 1,
+            "sortSearch": "MOST_RECENT",
+            "keywords": [
+                {"keyword": keyword, "specificSearchCode": "EVERYWHERE"}
+            ],
+            "publicationPeriod": None,
+            "occupationUris": [],
+            "skillUris": [],
+            "requiredExperienceCodes": [],
+            "positionScheduleCodes": [],
+            "sectorCodes": [],
+            "educationAndQualificationLevelCodes": [],
+            "positionOfferingCodes": [],
+            "locationCodes": [HUNGARY_NUTS],
+            "euresFlagCodes": [],
+            "otherBenefitsCodes": [],
+            "requiredLanguages": [],
+            "minNumberPost": None,
+            "sessionId": "jobhunter-session",
+            "requestLanguage": "en",
         }
-        response = await self._get(SEARCH_ENDPOINT, params=params)
-        data = response.json()
-        return self._parse_api_response(data, seen_ids)
 
-    def _parse_api_response(
-        self, data: dict[str, Any], seen_ids: set[str]
-    ) -> list[RawJob]:
-        """Parse EURES API JSON response into RawJob list."""
+        response = await self._post(
+            SEARCH_ENDPOINT,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+        )
+
+        if response.status_code != 200:
+            raise RuntimeError(f"EURES API returned {response.status_code}")
+
+        return self._parse(response.json(), seen_ids)
+
+    def _parse(self, data: dict[str, Any], seen_ids: set[str]) -> list[RawJob]:
         jobs: list[RawJob] = []
 
-        # EURES response structure: {"data": {"items": [...], "totalElements": N}}
+        # New API response: {"jobVacancies": [...], "total": N}
         items = (
-            data.get("data", {}).get("items", [])
-            or data.get("jobVacancies", [])
+            data.get("jobVacancies", [])
+            or data.get("data", {}).get("items", [])
             or data.get("items", [])
             or []
         )
@@ -163,17 +120,16 @@ class EURESConnector(BaseConnector):
                     seen_ids.add(job.source_job_id)
                 jobs.append(job)
             except Exception as exc:
-                logger.debug("eures.item_parse_error", error=str(exc))
+                logger.debug("eures.item_error", error=str(exc))
 
         return jobs
 
     def _parse_item(self, item: dict[str, Any]) -> Optional[RawJob]:
-        """Convert one EURES API item to a RawJob."""
-        # Extract ID
+        # ID — new API uses "id" or "handle"
         job_id = str(
             item.get("id")
-            or item.get("jobVacancyId")
-            or item.get("handle", "")
+            or item.get("handle")
+            or item.get("jobVacancyId", "")
         )
 
         # Title
@@ -185,25 +141,29 @@ class EURESConnector(BaseConnector):
         if not title:
             return None
 
-        # Company / employer
-        employer = item.get("employer", {})
+        # Employer
+        employer = item.get("employer") or item.get("company") or {}
         company = (
-            employer.get("name")
-            or employer.get("companyName")
-            or item.get("companyName", "Unknown")
+            employer.get("name") if isinstance(employer, dict) else str(employer)
+        ) or "Unknown"
+
+        # Location — new API nests location differently
+        location_data = (
+            item.get("jobLocation")
+            or item.get("location")
+            or item.get("place")
+            or {}
         )
-
-        # Location
-        location_data = item.get("location", {}) or item.get("jobLocation", {})
-        location_parts = []
-        if city := location_data.get("city") or location_data.get("municipality"):
-            location_parts.append(city)
-        if country := location_data.get("country") or location_data.get("countryCode"):
-            location_parts.append(country)
-        location = ", ".join(location_parts) if location_parts else None
-
-        # Description
-        description = item.get("description") or item.get("jobDescription")
+        city = (
+            location_data.get("city")
+            or location_data.get("municipality")
+            or location_data.get("name", "")
+        ) if isinstance(location_data, dict) else ""
+        country = (
+            location_data.get("country")
+            or location_data.get("countryCode", "")
+        ) if isinstance(location_data, dict) else ""
+        location = ", ".join(filter(None, [city, country])) or "Hungary"
 
         # URL
         application_url = (
@@ -212,23 +172,32 @@ class EURESConnector(BaseConnector):
             or item.get("url")
         )
         if job_id and not application_url:
-            application_url = f"https://eures.europa.eu/job-details/{job_id}"
+            application_url = f"https://europa.eu/eures/portal/jv-se/jv/{job_id}"
 
         # Dates
-        posted_at = self._parse_iso_date(item.get("publicationStartDate") or item.get("postedAt"))
-        deadline = self._parse_iso_date(item.get("publicationEndDate") or item.get("deadline"))
+        posted_at = self._parse_date(
+            item.get("publicationStartDate")
+            or item.get("postedAt")
+            or item.get("startDate", "")
+        )
+        deadline = self._parse_date(
+            item.get("publicationEndDate")
+            or item.get("deadline")
+            or item.get("endDate", "")
+        )
+
+        # Description
+        description = item.get("description") or item.get("jobDescription")
 
         # Work mode
         work_mode_raw = None
         if item.get("remote") or item.get("remoteWork"):
             work_mode_raw = "remote"
-        elif item.get("hybrid"):
-            work_mode_raw = "hybrid"
 
         # Salary
         salary_info = item.get("salary") or item.get("remuneration") or {}
         salary_raw = None
-        if salary_info:
+        if salary_info and isinstance(salary_info, dict):
             low = salary_info.get("from") or salary_info.get("minimum")
             high = salary_info.get("to") or salary_info.get("maximum")
             currency = salary_info.get("currency", "EUR")
@@ -248,12 +217,10 @@ class EURESConnector(BaseConnector):
             deadline=deadline,
             salary_raw=salary_raw,
             work_mode_raw=work_mode_raw,
-            extra={"eures_raw": item},
         )
 
     @staticmethod
-    def _parse_iso_date(raw: Any) -> Optional[datetime]:
-        """Parse an ISO 8601 date string from the API."""
+    def _parse_date(raw: Any) -> Optional[datetime]:
         if not raw or not isinstance(raw, str):
             return None
         for fmt in (
@@ -269,9 +236,8 @@ class EURESConnector(BaseConnector):
         return None
 
     async def _is_healthy(self) -> bool:
-        """Ping the EURES API."""
         try:
-            response = await self._get("https://eures.europa.eu")
-            return response.status_code < 400
+            r = await self._get("https://europa.eu/eures")
+            return r.status_code < 400
         except Exception:
             return False
