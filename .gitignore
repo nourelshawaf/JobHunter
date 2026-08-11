@@ -1,0 +1,84 @@
+# ── Secrets & credentials ─────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+browser_profiles/
+
+# ── Personal data (NEVER commit) ──────────────
+data/
+logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Documents (CVs, cover letters) ────────────
+*.pdf
+*.docx
+*.doc
+docs_personal/
+
+# ── Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# ── Virtual environments ───────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Testing & coverage ────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+
+# ── Type checking ─────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# ── IDE ───────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Playwright ────────────────────────────────
+playwright-report/
+test-results/
+screenshots/
+
+# ── Docker ────────────────────────────────────
+.docker/
+
+# ── Config (personal copy) ────────────────────
+config.yaml
+!config.example.yaml
+
+# ── Alembic generated ────────────────────────
+# (keep migrations/ tracked, exclude the DB)
+migrations/versions/__pycache__/
+
+# ── Email cache ───────────────────────────────
+email_cache/
+*.eml

@@ -1,0 +1,181 @@
+# ──────────────────────────────────────────────
+# JobHunter search configuration
+# Copy to config.yaml — this file is safe to commit (no secrets).
+# ──────────────────────────────────────────────
+
+candidate:
+  name: "Noureldeen Elshawaf"
+  university: "University of Debrecen"
+  degree: "Mechatronics Engineering BSc"
+  year: 3
+  languages:
+    - code: en
+      level: C1
+      label: "English"
+    - code: hu
+      level: B1
+      label: "Hungarian"
+    - code: de
+      level: A1
+      label: "German"
+
+search:
+  keywords:
+    engineering:
+      - "mechatronics intern"
+      - "robotics intern"
+      - "automation intern"
+      - "controls intern"
+      - "control engineering intern"
+      - "embedded systems intern"
+      - "electrical engineering intern"
+      - "mechanical engineering intern"
+      - "manufacturing engineering intern"
+      - "test engineering intern"
+      - "quality engineering intern"
+      - "PLC intern"
+      - "working student engineering"
+      - "engineering trainee"
+      - "student engineer"
+      - "technical intern"
+    software:
+      - "computer vision intern"
+      - "AI intern"
+      - "machine learning intern"
+      - "ROS intern"
+      - "Python engineering intern"
+      - "C++ intern"
+      - "R&D intern"
+      - "research intern"
+    hungarian:
+      - "gyakornok"
+      - "mérnök gyakornok"
+      - "automatizálási gyakornok"
+      - "mechatronikai gyakornok"
+      - "villamosmérnök gyakornok"
+      - "gépészmérnök gyakornok"
+      - "tesztmérnök gyakornok"
+
+  locations:
+    primary:
+      - "Budapest"
+      - "Debrecen"
+    secondary:
+      - "Hungary"
+      - "Magyarország"
+    remote: true
+
+  exclude_keywords:
+    - "senior"
+    - "manager"
+    - "director"
+    - "head of"
+    - "lead"
+    - "principal"
+    - "staff engineer"
+    - "10+ years"
+    - "8+ years"
+    - "7+ years"
+    - "5+ years"
+
+scoring:
+  min_score_to_notify: 75
+  min_score_to_save: 40
+  auto_reject_below: 20
+
+  # Penalty for mandatory fluent Hungarian
+  hungarian_mandatory_penalty: 20
+
+  # Boost for priority companies
+  priority_companies:
+    - "Bosch"
+    - "BMW"
+    - "Siemens"
+    - "Baker Hughes"
+    - "Continental"
+    - "Schaeffler"
+    - "Knorr-Bremse"
+    - "Valeo"
+    - "ZF"
+    - "ABB"
+    - "Schneider Electric"
+    - "Emerson"
+    - "GE Vernova"
+    - "INNIO"
+    - "Honeywell"
+    - "Tesla"
+    - "CATL"
+
+connectors:
+  enabled:
+    - profession_hu
+    - eures
+    - bosch_careers
+    - bmw_careers
+    - baker_hughes_careers
+    - siemens_careers
+    - continental_careers
+    - email_alerts
+    - knorr_bremse_careers
+    - valeo_careers
+    - zf_careers
+    - abb_careers
+    - jooble_rss
+    - graduateland
+
+  profession_hu:
+    enabled: true
+    base_url: "https://www.profession.hu"
+    request_delay: 8  # seconds
+
+  eures:
+    enabled: true
+    api_url: "https://eures.europa.eu/api"
+    request_delay: 5
+
+  bosch_careers:
+    enabled: true
+    base_url: "https://www.bosch.com/careers"
+    request_delay: 10
+
+  baker_hughes_careers:
+    enabled: true
+    base_url: "https://careers.bakerhughes.com"
+    request_delay: 10
+
+  email_alerts:
+    enabled: true
+    check_interval_minutes: 30
+    senders:
+      - "jobalert@linkedin.com"
+      - "indeed@indeed.com"
+      - "alert@glassdoor.com"
+      - "noreply@profession.hu"
+
+notifications:
+  daily_summary_time: "08:00"
+  min_score_for_instant: 75
+  deadline_warning_days: [3, 7]
+  channels:
+    - email
+    # - telegram
+    # - desktop
+
+application:
+  # Fields that require manual input — never auto-filled
+  sensitive_fields:
+    - salary
+    - disability
+    - health
+    - ethnicity
+    - religion
+    - gender
+    - veteran
+    - criminal
+    - sponsorship
+    - visa
+    - legal_declaration
+    - data_consent
+    - relocation_commitment
+    - start_date_commitment
+    - conflict_of_interest

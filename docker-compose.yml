@@ -1,0 +1,79 @@
+version: "3.9"
+
+# ── Shared environment ────────────────────────────────────────────────────
+x-env: &env
+  env_file: .env
+  environment:
+    - JOBHUNTER_CONFIG=/app/config.yaml
+
+# ── Shared volumes ────────────────────────────────────────────────────────
+x-volumes: &volumes
+  - ./data:/app/data
+  - ./logs:/app/logs
+  - ./config.yaml:/app/config.yaml:ro
+
+services:
+
+  # ── Dashboard (Streamlit) ───────────────────────────────────────────────
+  dashboard:
+    build: .
+    <<: *env
+    volumes: *volumes
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    command: >
+      streamlit run jobhunter/dashboard/app.py
+      --server.port 8501
+      --server.address 0.0.0.0
+      --server.headless true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Scheduler (background ingestion) ────────────────────────────────────
+  scheduler:
+    build: .
+    <<: *env
+    volumes: *volumes
+    command: python -m jobhunter.cli scheduler
+    depends_on:
+      dashboard:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── One-shot ingestion (run with: docker compose run --rm ingest) ────────
+  ingest:
+    build: .
+    <<: *env
+    volumes: *volumes
+    command: python -m jobhunter.cli ingest
+    profiles: ["tools"]
+
+  # ── Database migration (run with: docker compose run --rm migrate) ───────
+  migrate:
+    build: .
+    <<: *env
+    volumes: *volumes
+    command: alembic upgrade head
+    profiles: ["tools"]
+
+  # ── Optional: PostgreSQL (uncomment to switch from SQLite) ──────────────
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_DB: jobhunter
+  #     POSTGRES_USER: jobhunter
+  #     POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U jobhunter"]
+  #     interval: 10s
+  #     retries: 5
+  #   restart: unless-stopped
+
+# volumes:
+#   pg_data:
