@@ -14,6 +14,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from jobhunter.config import get_settings
 from jobhunter.database import Base
 
+# Ensure data/ directory exists before SQLite tries to open a file in it.
+# Without this, Alembic fails on first run if data/ doesn't exist yet.
+_settings_early = get_settings()
+if _settings_early.is_sqlite:
+    _settings_early.data_dir.mkdir(parents=True, exist_ok=True)
+
 # Import every model so autogenerate sees all tables
 from jobhunter.models import application, job, notification, profile  # noqa: F401
 

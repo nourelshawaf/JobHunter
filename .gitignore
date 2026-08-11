@@ -10,8 +10,10 @@ secrets/
 browser_profiles/
 
 # ── Personal data (NEVER commit) ──────────────
-data/
-logs/
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
 *.db
 *.sqlite
 *.sqlite3
